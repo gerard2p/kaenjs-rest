@@ -192,6 +192,10 @@ export class Router extends KNRouter{
 	constructor(subdomain:string = 'www') {
 		super(subdomain);
 	}
+	common(route:string, ...middleware:Middleware[]):Router {
+		super.common(route, ...middleware);
+		return this;
+	}
 	options(route:string, file:string):Router
 	options(route:string, options:RouterOptions, file:string):Router
 	options(route:string, options: RouterOptions, ...fn: Middleware[] ):Router

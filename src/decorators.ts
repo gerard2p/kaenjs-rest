@@ -37,3 +37,7 @@ export function REST(Model: DATABASEMODEL, subdomain: string = 'api', version: s
 		} as T;
 	}
 }
+
+export function OKRest<T>(Model:T, version:string='1.0') {
+
+}
