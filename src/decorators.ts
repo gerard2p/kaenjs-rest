@@ -1,43 +1,22 @@
 import { HTTPVerbs } from "@kaenjs/core";
 import 'reflect-metadata';
+import { Router } from ".";
 export const RESTVerbs = [HTTPVerbs.get, HTTPVerbs.post, HTTPVerbs.put, HTTPVerbs.patch, HTTPVerbs.delete];
 export type DATABASEMODEL = { new(...args: any[]): {} };
-export function Route(route:string, method: HTTPVerbs=HTTPVerbs.post) {
+export function ROUTE(method: HTTPVerbs=HTTPVerbs.post, route?:string) {
 	return function (target: any, key: string, descriptor) {
-		console.log(method, route);
 		Reflect.defineMetadata('kaen:rest', {method, route} ,target[key]);
 	}
 }
-export function Verb(method: HTTPVerbs) {
-	return function (target: any, key: string, descriptor) {
-
-	}
-}
-export function Resource(Model: any) {
-	return function Resource<T extends DATABASEMODEL>(constructor: T) {
-		return class extends constructor {
-			Resource = Model;
-		}
-	}
-}
-export function Domain(subdomain: string = 'api', version: string = '1.0') {
-	return function Domain<T extends DATABASEMODEL>(constructor: T) {
-		return class extends constructor {
-			Subdomain = process.env.KAEN_INTERNAL_SUBDOMAIN;
-			Version = version;
-		}
-	}
-}
-export function REST(Model: DATABASEMODEL, subdomain: string = 'api', version: string = '1.0') {
+export function REST(Model: DATABASEMODEL, version: string = '1.0', subdomain: string = 'api') {
 	return function REST<T extends DATABASEMODEL>(constructor: T) {
-		return class extends constructor {
+		class model extends constructor {
 			Resource = Model;
 			Subdomain = process.env.KAEN_INTERNAL_SUBDOMAIN;
 			Version = version;
-		} as T;
+		};
+		// @ts-ignore
+		new Router(subdomain).rest(new model);
+		return model;
 	}
-}
-
-export function OKRest<T>(Model:T, version:string='1.0') {
-
 }

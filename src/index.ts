@@ -8,7 +8,8 @@ import 'reflect-metadata';
 import { RESTVerbs } from './decorators';
 import { KRestContext } from './interface';
 import { REST_DELETE, REST_GET, REST_POST, REST_PUT } from './verbs';
-export class RestModel<T> {
+export class Restify<T> {
+	useVersionAsNamespace:boolean = true
 	serialize(status:number, data:any, representation?:string):any {
 		switch (representation) {
 			case 'xml':
@@ -100,7 +101,7 @@ export class RestModel<T> {
 
 		return props
 	}
-	static getResource<K>(t: RestModel<K>) {
+	static getResource<K>(t: Restify<K>) {
 		return t.Resource;
 	}
 	Resource: T
@@ -127,9 +128,6 @@ export class RestModel<T> {
 		// await CONTENT_NEGOTIATION(ctx, id, representation);
 	}
 }
-
-
-
 function getRepresentation(ctx:KRestContext, representation?:string) {
 	if (!representation) {
 		let [mediatype] = parseHeader(ctx.headers[StandardRequestHeaders.ContentType]);
@@ -250,15 +248,14 @@ export class Router extends KNRouter{
 		super.delete(...arguments);
 		return this;
 	}
-	rest<T extends RestModel<any>>(model:T):Router
-	rest<T extends RestModel<any>>(model:T, route:string):Router
-	rest<T extends RestModel<any>>(model:T, options:RouterOptions):Router
-	rest<T extends RestModel<any>>(model:T, options:RouterOptions, route:string):Router
-	rest<T extends RestModel<any>>(restroute:T, arg0?:string|RouterOptions, arg1?:string) {
+	rest<T extends Restify<any>>(model:T):Router
+	rest<T extends Restify<any>>(model:T, route:string):Router
+	rest<T extends Restify<any>>(model:T, options:RouterOptions):Router
+	rest<T extends Restify<any>>(model:T, options:RouterOptions, route:string):Router
+	rest<T extends Restify<any>>(restroute:T, arg0?:string|RouterOptions, arg1?:string) {
 		let route = (typeof arg0 === 'string' ? arg0 : arg1) || '';
 		let options = typeof arg0 === 'number' ? arg0 : 0;
-		require('reflect-metadata');
-		const Model:any = RestModel.getResource(restroute);
+		const Model:any = Restify.getResource(restroute);
 		let metadata:any = Reflect.getMetadata("vault-orm:design", Model);
 		let relations = Object.getOwnPropertyNames(metadata)
 			.filter(p=> metadata[p].kind && metadata[p].kind.constructor && ['RelationSingle', 'HasManyRelation'].includes(metadata[p].kind.constructor.name))
@@ -271,7 +268,7 @@ export class Router extends KNRouter{
 			});
 		//@ts-ignore
 		let model_name = Model.name.toLowerCase();
-		let base_route =  posix.join('/', route, inflector.pluralize(model_name));
+		let base_route =  posix.join('/', restroute.useVersionAsNamespace ? restroute.Version:'', route, inflector.pluralize(model_name));
 		let Models = {[model_name]: Model};
 
 		KNRouter.register(this, RESTVerbs, `${base_route}/?.*\.?:representation?`, [async (ctx:KaenContext)=>{
@@ -310,7 +307,7 @@ export class Router extends KNRouter{
 			Models[model_name] = ChildModel;
 			this.rest_related(ChildModel, `${base_route}/:id`, ['belongsto', 'hasone'].includes(relation.mode));
 		}
-		let rest_methods = RestModel.getAllMethods(restroute).filter(f=>!['read','create','update','partial_update', 'delete', 'manipulate'].includes(f));
+		let rest_methods = Restify.getAllMethods(restroute).filter(f=>!['read','create','update','partial_update', 'delete', 'manipulate'].includes(f));
 		for(const rest_method_name of rest_methods) {
 			const {method=HTTPVerbs.post, route=`/${rest_method_name}`}  = Reflect.getMetadata('kaen:rest',restroute[rest_method_name]) || {};
 			KNRouter.register(this, [method], posix.join(base_route, route), [restroute[rest_method_name]] );
@@ -340,3 +337,5 @@ export function Subdomains () {
 		}
 	}
 }
+
+export {REST, ROUTE} from './decorators';
