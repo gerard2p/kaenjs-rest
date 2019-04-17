@@ -3,13 +3,16 @@ import { StandardRequestHeaders, StandardResponseHeaders } from "@kaenjs/core/he
 import { MimeType } from "@kaenjs/core/mime-types";
 import { parseHeader, toXMl } from "@kaenjs/core/utils";
 import { Router as KNRouter, RouterOptions } from '@kaenjs/router';
+import { RegisterHook, RegisterRoute } from '@kaenjs/router/register';
 import { posix } from "path";
 import 'reflect-metadata';
-import { RESTVerbs } from './decorators';
+import { RESTVerbs, STORAGEHOOK } from './decorators';
 import { KRestContext } from './interface';
 import { REST_DELETE, REST_GET, REST_POST, REST_PUT } from './verbs';
 export class Restify<T> {
+	CORS:string
 	useVersionAsNamespace:boolean = true
+	addTrailingSlash:boolean = true
 	serialize(status:number, data:any, representation?:string):any {
 		switch (representation) {
 			case 'xml':
@@ -105,7 +108,7 @@ export class Restify<T> {
 		return t.Resource;
 	}
 	Resource: T
-	Subdomain: string
+	Subdomain:string
 	Version: string
 	async read(ctx:KaenContext, id:string, representation:string) {
 		await REST_GET(ctx, id);
@@ -184,6 +187,8 @@ export async function CONTENT_NEGOTIATION(ctx: KRestContext, _: any, representat
 	ctx.finished = true;
 }
 
+export { Routes, Subdomains } from '@kaenjs/router';
+export { CORS, REST, ROUTE } from './decorators';
 export { REST_GET, REST_POST, REST_PUT, REST_DELETE };
 
 export class Router extends KNRouter{
@@ -270,8 +275,8 @@ export class Router extends KNRouter{
 		let model_name = Model.name.toLowerCase();
 		let base_route =  posix.join('/', restroute.useVersionAsNamespace ? restroute.Version:'', route, inflector.pluralize(model_name));
 		let Models = {[model_name]: Model};
-
-		KNRouter.register(this, RESTVerbs, `${base_route}/?.*\.?:representation?`, [async (ctx:KaenContext)=>{
+		this.SetUpCors<T>(restroute, base_route);
+		RegisterRoute(this.Subdomain, RESTVerbs, `${base_route}/?.*\.?:representation?`, [async (ctx:KaenContext)=>{
 			let pheader = parseHeader(ctx.headers[StandardRequestHeaders.ContentType]).filter( h=>h.includes('version') ).map( v=>v.replace('version=', '') )[0];
 			let url_chunk = ctx.url.path.replace(route, '').replace(/\..*$/, '').split('/')
 				.filter(u=>u)
@@ -294,48 +299,69 @@ export class Router extends KNRouter{
 				ctx.state.KAENREST.Model = Model;
 			}
 		}], options);
+		RegisterRoute(this.Subdomain, [HTTPVerbs.get], `${base_route}/?:id?\\.?:representation?`, [this.AllowCors<T>(restroute), restroute.read], options );
+		RegisterRoute(this.Subdomain, [HTTPVerbs.post], `${base_route}/`, [this.AllowCors<T>(restroute),restroute.create], options );
+		RegisterRoute(this.Subdomain, [HTTPVerbs.put], `${base_route}/:id\\.?:representation?`, [this.AllowCors<T>(restroute),restroute.update], options );
+		RegisterRoute(this.Subdomain, [HTTPVerbs.delete], `${base_route}/:id`, [this.AllowCors<T>(restroute),restroute.delete], options );
+		this.SetUpRelations<T>(relations, Models, base_route, restroute);
+		this.SetUpMethods<T>(restroute, base_route);
+		return this;
+	}
+	private AllowCors<T extends Restify<any>>(restroute: T):any {
+		let route = this;
+		let cors = restroute.CORS.split(',');
+		function corsfn(ctx:KaenContext) {
+			ctx.headers[StandardResponseHeaders.AccessControlAllowOrigin] = route.validateCORS(ctx, cors);
+		}
+		return restroute.CORS ? corsfn : undefined;
+	}
+	private validateCORS(ctx:KaenContext, cors:string[]) {
+		let request = ctx.headers[StandardRequestHeaders.Origin]; //.split('//')[1];
+		let match = cors.includes('*') || cors.some(origin=>request.includes(origin));
+		return match ? ctx.headers[StandardRequestHeaders.Origin] : undefined;
+		// console.log(request);
 
-		KNRouter.register(this, [HTTPVerbs.get], `${base_route}/?:id?\\.?:representation?`, [restroute.read], options );
-		KNRouter.register(this, [HTTPVerbs.post], `${base_route}/`, [restroute.create], options );
-		KNRouter.register(this, [HTTPVerbs.put], `${base_route}/:id\\.?:representation?`, [restroute.update], options );
-		KNRouter.register(this, [HTTPVerbs.delete], `${base_route}/:id`, [restroute.delete], options );
+	}
+	private SetUpCors<T extends Restify<any>>(restroute: T, base_route:string) {
+		if (restroute.CORS) {
+			let cors = restroute.CORS.split(',');
+			RegisterRoute(this.Subdomain, [HTTPVerbs.options], posix.join(base_route, '.*'), [async (ctx) => {
+				ctx.headers[StandardResponseHeaders.AccessControlAllowMethods] = ctx.headers[StandardRequestHeaders.AccessControlRequestMethod];
+				ctx.headers[StandardResponseHeaders.AccessControlAllowHeaders] = 'content-type';
+				ctx.headers[StandardResponseHeaders.AccessControlAllowOrigin] = this.validateCORS(ctx, cors);
+				ctx.status = 200;
+			}]);
+		}
+	}
 
-		for(const relation of relations) {
+	private SetUpMethods<T extends Restify<any>>(restroute:T, base_route:String) {
+		let rest_methods = Restify.getAllMethods(restroute).filter(f=>!['read','create','update','partial_update', 'delete', 'manipulate'].includes(f));
+		for(const rest_method_name of rest_methods) {
+			const {method=HTTPVerbs.post, route=posix.join('/', rest_method_name,restroute.addTrailingSlash?'/':'')}  = Reflect.getMetadata('kaen:rest',restroute[rest_method_name]) || {};
+			RegisterRoute(this.Subdomain, [method], posix.join(base_route, route), [this.AllowCors<T>(restroute),restroute[rest_method_name]] );
+		}
+	}
+	private SetUpRelations<T extends Restify<any>>( relations: { Model: any; mode: any; property: string; }[], Models: { [x: number]: any; }, base_route: string, restroute:T ) {
+		for (const relation of relations) {
 			let ChildModel = relation.Model;
 			//@ts-ignore
 			let model_name = ChildModel.name.toLowerCase();
 			Models[model_name] = ChildModel;
-			this.rest_related(ChildModel, `${base_route}/:id`, ['belongsto', 'hasone'].includes(relation.mode));
+			this.rest_related(ChildModel, `${base_route}/:id`, restroute, ['belongsto', 'hasone'].includes(relation.mode));
 		}
-		let rest_methods = Restify.getAllMethods(restroute).filter(f=>!['read','create','update','partial_update', 'delete', 'manipulate'].includes(f));
-		for(const rest_method_name of rest_methods) {
-			const {method=HTTPVerbs.post, route=`/${rest_method_name}`}  = Reflect.getMetadata('kaen:rest',restroute[rest_method_name]) || {};
-			KNRouter.register(this, [method], posix.join(base_route, route), [restroute[rest_method_name]] );
-		}
-
-		return this;
 	}
-	private rest_related<T>(Model:T, route:string, single:boolean=false) {
+
+	private rest_related<T extends Restify<any>>(Model:T, route:string, restroute:T, single:boolean=false) {
 		//@ts-ignore
 		let name = single ? Model.name.toLowerCase() : inflector.pluralize(Model.name.toLowerCase());
-		let path = `${route}/${name}`;
-		KNRouter.register(this, [HTTPVerbs.get], `${path}\\.?:representation?`, [REST_GET, CONTENT_NEGOTIATION] );
+		let path =  `${route}/${name}`;
+		RegisterRoute(this.Subdomain, [HTTPVerbs.get], `${path}\\.?:representation?`, [REST_GET, CONTENT_NEGOTIATION] );
 	}
 }
-
-export function Routes() {
-	return Router.execute;
-}
-export function Subdomains () {
-	return async function subdomains(ctx:KaenContext) {
-		for (const subdomain of Router.subdomains) {
-			if (ctx.domain.includes(`${subdomain}.`)) {
-				ctx.domain = ctx.domain.replace(`${subdomain}.`, '');
-				ctx.subdomain = subdomain;
-				break;
-			}
-		}
+RegisterHook(()=>{
+	for(let hook of Array.from(STORAGEHOOK.keys()) ) {
+		//@ts-ignore
+		let m = new hook();
+		new Router(m.Subdomain).rest(m);
 	}
-}
-
-export {REST, ROUTE} from './decorators';
+});

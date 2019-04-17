@@ -8,15 +8,30 @@ export function ROUTE(method: HTTPVerbs=HTTPVerbs.post, route?:string) {
 		Reflect.defineMetadata('kaen:rest', {method, route} ,target[key]);
 	}
 }
+export const STORAGEHOOK = new Map<object, any>();
 export function REST(Model: DATABASEMODEL, version: string = '1.0', subdomain: string = 'api') {
 	return function REST<T extends DATABASEMODEL>(constructor: T) {
 		class model extends constructor {
 			Resource = Model;
-			Subdomain = process.env.KAEN_INTERNAL_SUBDOMAIN;
+			Subdomain = subdomain;
 			Version = version;
 		};
-		// @ts-ignore
-		new Router(subdomain).rest(new model);
+		if ( STORAGEHOOK.has(constructor) ) {
+			STORAGEHOOK.delete(constructor);
+		}
+		STORAGEHOOK.set(model, 'rest');
+		return model;
+	}
+}
+export function CORS(origin:string) {
+	return function CORS<T extends DATABASEMODEL>(constructor: T) {
+		class model extends constructor {
+			CORS= origin;
+		};
+		if ( STORAGEHOOK.has(constructor) ) {
+			STORAGEHOOK.delete(constructor);
+		}
+		STORAGEHOOK.set(model, 'cors');
 		return model;
 	}
 }
