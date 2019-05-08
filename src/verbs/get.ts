@@ -29,8 +29,8 @@ export async function REST_GET(ctx: KRestContext, id: any = null) {
 		// else if ((!limit && !offset)) {
 		// 	([offset, limit] = PAGINATION);
 		// }
-		offset = parseInt(offset);
-		limit = parseInt(limit);
+		offset = parseInt(offset) || 0;
+		limit = parseInt(limit) || 0;
 		if (offset) {
 			query = query.skip(parseInt(offset));
 		}

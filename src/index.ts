@@ -135,7 +135,7 @@ export class Router extends KNRouter{
 	private SetUpMethods<T extends Restify<any>>(restroute:T, base_route:String) {
 		let rest_methods = Restify.getAllMethods(restroute).filter(f=>!['read','create','update','partial_update', 'delete', 'manipulate'].includes(f));
 		for(const rest_method_name of rest_methods) {
-			const {method=HTTPVerbs.post, route=posix.join('/', rest_method_name,restroute.addTrailingSlash?'/':'')}  = Reflect.getMetadata('kaen:rest',restroute[rest_method_name]) || {};
+			const {method=HTTPVerbs.post, route=posix.join('/', rest_method_name,restroute.addTrailingSlash?'/':'')}  = getMetadata(restroute[rest_method_name]);
 			RegisterRoute(this.Subdomain, [method], posix.join(base_route, route), [restroute[rest_method_name]] );
 		}
 	}
@@ -158,10 +158,10 @@ export class Router extends KNRouter{
 Restify.setup = (model:Restify<any>)=>{
 	for(const method_name of Restify.getAllMethos(model) ) {
 		setMetadata(model[method_name], {
-			access_control_allow: {
-				origin: model.CORS,
-				methods: !!model.CORS
-			}
+			access_control_allow: model.CORS
+		});
+		setMetadata(model[method_name], {
+			access_control_allow: {methods:true}
 		});
 	}
 	new Router(model.Subdomain).rest(model);

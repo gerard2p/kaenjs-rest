@@ -4,7 +4,6 @@ import { CONTENT_NEGOTIATION } from "./content_negotiation";
 import { RouterModel, Ignore } from "@kaenjs/router";
 
 export class Restify<T> extends RouterModel {
-	CORS:string = ''
 	useVersionAsNamespace:boolean = true
 	addTrailingSlash:boolean = true
 	@Ignore serialize(status:number, data:any, representation?:string):any {
