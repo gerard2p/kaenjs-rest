@@ -7,14 +7,14 @@ import { posix } from "path";
 import 'reflect-metadata';
 import { CONTENT_NEGOTIATION } from "./content_negotiation";
 import { RESTVerbs } from './decorators';
-import { Restify } from "./model";
+import { RouterModel } from "./model";
 import { REST_DELETE, REST_GET, REST_POST, REST_PUT } from './verbs';
 import { getMetadata, setMetadata } from '@kaenjs/router/metadata';
 
 
 export { Routes, Subdomains } from '@kaenjs/router';
 export * from './decorators';
-export { REST_GET, REST_POST, REST_PUT, REST_DELETE, Restify };
+export { REST_GET, REST_POST, REST_PUT, REST_DELETE, RouterModel as Restify, RouterModel };
 
 export class Router extends KNRouter{
 	constructor(subdomain:string = 'www') {
@@ -78,14 +78,14 @@ export class Router extends KNRouter{
 		super.delete(...arguments);
 		return this;
 	}
-	rest<T extends Restify<any>>(model:T):Router
-	rest<T extends Restify<any>>(model:T, route:string):Router
-	rest<T extends Restify<any>>(model:T, options:RouterOptions):Router
-	rest<T extends Restify<any>>(model:T, options:RouterOptions, route:string):Router
-	rest<T extends Restify<any>>(restroute:T, arg0?:string|RouterOptions, arg1?:string) {
+	rest<T extends RouterModel<any>>(model:T):Router
+	rest<T extends RouterModel<any>>(model:T, route:string):Router
+	rest<T extends RouterModel<any>>(model:T, options:RouterOptions):Router
+	rest<T extends RouterModel<any>>(model:T, options:RouterOptions, route:string):Router
+	rest<T extends RouterModel<any>>(restroute:T, arg0?:string|RouterOptions, arg1?:string) {
 		let route = (typeof arg0 === 'string' ? arg0 : arg1) || '';
 		let options = typeof arg0 === 'number' ? arg0 : 0;
-		const Model:any = Restify.getResource(restroute);
+		const Model:any = RouterModel.getResource(restroute);
 		let metadata:any = Reflect.getMetadata("vault-orm:design", Model);
 		let relations = Object.getOwnPropertyNames(metadata)
 			.filter(p=> metadata[p].kind && metadata[p].kind.constructor && ['RelationSingle', 'HasManyRelation'].includes(metadata[p].kind.constructor.name))
@@ -132,14 +132,14 @@ export class Router extends KNRouter{
 		this.SetUpMethods<T>(restroute, base_route);
 		return this;
 	}
-	private SetUpMethods<T extends Restify<any>>(restroute:T, base_route:String) {
-		let rest_methods = Restify.getAllMethods(restroute).filter(f=>!['read','create','update','partial_update', 'delete', 'manipulate'].includes(f));
+	private SetUpMethods<T extends RouterModel<any>>(restroute:T, base_route:String) {
+		let rest_methods = RouterModel.getAllMethods(restroute).filter(f=>!['read','create','update','partial_update', 'delete', 'manipulate'].includes(f));
 		for(const rest_method_name of rest_methods) {
 			const {method=HTTPVerbs.post, route=posix.join('/', rest_method_name,restroute.addTrailingSlash?'/':'')}  = getMetadata(restroute[rest_method_name]);
 			RegisterRoute(this.Subdomain, [method], posix.join(base_route, route), [restroute[rest_method_name]] );
 		}
 	}
-	private SetUpRelations<T extends Restify<any>>( relations: { Model: any; mode: any; property: string; }[], Models: { [x: number]: any; }, base_route: string, restroute:T ) {
+	private SetUpRelations<T extends RouterModel<any>>( relations: { Model: any; mode: any; property: string; }[], Models: { [x: number]: any; }, base_route: string, restroute:T ) {
 		for (const relation of relations) {
 			let ChildModel = relation.Model;
 			//@ts-ignore
@@ -148,15 +148,15 @@ export class Router extends KNRouter{
 			this.rest_related(ChildModel, `${base_route}/:id`, restroute, ['belongsto', 'hasone'].includes(relation.mode));
 		}
 	}
-	private rest_related<T extends Restify<any>>(Model:T, route:string, restroute:T, single:boolean=false) {
+	private rest_related<T extends RouterModel<any>>(Model:T, route:string, restroute:T, single:boolean=false) {
 		//@ts-ignore
 		let name = single ? Model.name.toLowerCase() : inflector.pluralize(Model.name.toLowerCase());
 		let path =  `${route}/${name}`;
 		RegisterRoute(this.Subdomain, [HTTPVerbs.get], `${path}\\.?:representation?`, [REST_GET, CONTENT_NEGOTIATION] );
 	}
 }
-Restify.setup = (model:Restify<any>)=>{
-	for(const method_name of Restify.getAllMethos(model) ) {
+RouterModel.setup = (model:RouterModel<any>)=>{
+	for(const method_name of RouterModel.getAllMethos(model) ) {
 		setMetadata(model[method_name], {
 			access_control_allow: model.CORS
 		});

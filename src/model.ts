@@ -1,9 +1,9 @@
 import { REST_GET, REST_POST, REST_PUT, REST_DELETE } from "./verbs";
 import { KaenContext, HTTPVerbs } from "@kaenjs/core";
 import { CONTENT_NEGOTIATION } from "./content_negotiation";
-import { RouterModel, Ignore } from "@kaenjs/router";
+import { RouterModel as RM, Ignore } from "@kaenjs/router";
 
-export class Restify<T> extends RouterModel {
+export class RouterModel<T> extends RM {
 	useVersionAsNamespace:boolean = true
 	addTrailingSlash:boolean = true
 	@Ignore serialize(status:number, data:any, representation?:string):any {
@@ -97,7 +97,7 @@ export class Restify<T> extends RouterModel {
 
 		return props
 	}
-	static getResource<K>(t: Restify<K>) {
+	static getResource<K>(t: RouterModel<K>) {
 		return t.Resource.Model;
 	}
 	Resource: {Model:T}
