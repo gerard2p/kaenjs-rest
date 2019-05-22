@@ -98,12 +98,12 @@ export class Router extends KNRouter{
 			});
 		//@ts-ignore
 		let model_name = Model.name.toLowerCase();
+		let root_route = posix.join('/', restroute.useVersionAsNamespace ? restroute.Version:'', route );
 		let base_route =  posix.join('/', restroute.useVersionAsNamespace ? restroute.Version:'', route, inflector.pluralize(model_name));
 		let Models = {[model_name]: Model};
-		// this.SetUpCors<T>(restroute, base_route);
 		RegisterRoute(this.Subdomain, RESTVerbs, `${base_route}/?.*\.?:representation?`, [async (ctx:KaenContext)=>{
 			let pheader = parseHeader(ctx.headers[StandardRequestHeaders.ContentType]).filter( h=>h.includes('version') ).map( v=>v.replace('version=', '') )[0];
-			let url_chunk = ctx.url.path.replace(route, '').replace(/\..*$/, '').split('/')
+			let url_chunk = ctx.url.path.replace(root_route, '').replace(/\..*$/, '').split('/')
 				.filter(u=>u)
 				.filter((e,i)=>i%2===0)
 				.map(u=>inflector.singularize(u));
