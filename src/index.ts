@@ -123,7 +123,7 @@ export class Router extends KNRouter{
 				ctx.state.KAENREST.Collection = Model.prototype.vaultCollection();
 				ctx.state.KAENREST.Model = Model;
 			}
-		}], options);
+		}], options, undefined, true);
 		RegisterRoute(this.Subdomain, [HTTPVerbs.get], `${base_route}/?:id?\\.?:representation?`, [ restroute.read], options );
 		RegisterRoute(this.Subdomain, [HTTPVerbs.post], `${base_route}/`, [restroute.create], options );
 		RegisterRoute(this.Subdomain, [HTTPVerbs.put], `${base_route}/:id\\.?:representation?`, [restroute.update], options );
