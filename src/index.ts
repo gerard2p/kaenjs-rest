@@ -157,11 +157,20 @@ export class Router extends KNRouter{
 }
 RouterModel.setup = (model:RouterModel<any>)=>{
 	for(const method_name of RouterModel.getAllMethos(model) ) {
+		let defined_headers = model.CORS ? (model.CORS.headers||[]) : [];
+		defined_headers.push('Content-Type');
+		if(method_name === 'read') {
+			defined_headers.push('Range');
+		}
+		defined_headers = defined_headers.filter((h,i)=>defined_headers.indexOf(h)===i);
 		setMetadata(model[method_name], {
 			access_control_allow: model.CORS
 		});
 		setMetadata(model[method_name], {
-			access_control_allow: {methods:true}
+			access_control_allow: {
+				headers: defined_headers,
+				methods:true
+			}
 		});
 	}
 	new Router(model.Subdomain).rest(model);
