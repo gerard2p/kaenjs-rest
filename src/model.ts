@@ -45,19 +45,15 @@ export class RouterModel<T> extends RM {
 					default:
 					if (typeof attributes[key].kind === 'function') {
 						let {kind} = attributes[key];
-						let Collection;
-						switch(kind.mode) {
-							case 'belongsto':
-								// Collection = kind.sourceModel.prototype.vaultCollection()
+						switch(kind.constructor.name) {
+							case 'BelongsToeRelation':
+							case 'ManyToManyRelation':
 								body[key] = body[key].id ? body[key].id : body[key];
-								// body[attributes[key].kind.childKey] = Collection.toId(body[key]);
-								// delete body[key];
 								break;
-							case 'hasmany':
-								// Collection = kind.parentModel.prototype.vaultCollection()
+							case 'HasManyRelation':
 								body[key] = body[key].map(id=>(id.id ? id.id:id));
 								break;
-
+							
 						}
 					}
 						break;

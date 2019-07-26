@@ -10,6 +10,7 @@ import { RESTVerbs } from './decorators';
 import { RouterModel } from "./model";
 import { REST_DELETE, REST_GET, REST_POST, REST_PUT } from './verbs';
 import { getMetadata, setMetadata } from '@kaenjs/router/metadata';
+import { definitionFor, getSchemaFor } from "@gerard2p/vault-orm";
 
 
 export { Routes, Subdomains } from '@kaenjs/router';
@@ -86,13 +87,16 @@ export class Router extends KNRouter{
 		let route = (typeof arg0 === 'string' ? arg0 : arg1) || '';
 		let options = typeof arg0 === 'number' ? arg0 : 0;
 		const Model:any = RouterModel.getResource(restroute);
+		let md = definitionFor(Model);
+		let {related, defined, masked, naked} = getSchemaFor(Model);
+		// let rels = ;
 		let metadata:any = Reflect.getMetadata("vault-orm:design", Model);
-		let relations = Object.getOwnPropertyNames(metadata)
-			.filter(p=> metadata[p].kind && metadata[p].kind.constructor && ['RelationSingle', 'HasManyRelation'].includes(metadata[p].kind.constructor.name))
+		let relations = Object.getOwnPropertyNames(md)
+			.filter(p=> typeof(md[p].kind) === 'function')
 			.map(p=> {
 				return {
-					Model: metadata[p].kind.parentModel(),
-					mode: metadata[p].kind.mode,
+					Model: metadata[p].kind.childResolver(),
+					mode: metadata[p].kind.constructor.name,
 					property: p
 				};
 			});
@@ -139,13 +143,13 @@ export class Router extends KNRouter{
 			RegisterRoute(this.Subdomain, [method], posix.join(base_route, route), [restroute[rest_method_name]] );
 		}
 	}
-	private SetUpRelations<T extends RouterModel<any>>( relations: { Model: any; mode: any; property: string; }[], Models: { [x: number]: any; }, base_route: string, restroute:T ) {
+	private SetUpRelations<T extends RouterModel<any>>( relations: { Model: any; mode:string; property: string; }[], Models: { [x: number]: any; }, base_route: string, restroute:T ) {
 		for (const relation of relations) {
 			let ChildModel = relation.Model;
 			//@ts-ignore
 			let model_name = ChildModel.name.toLowerCase();
 			Models[model_name] = ChildModel;
-			this.rest_related(ChildModel, `${base_route}/:id`, restroute, ['belongsto', 'hasone'].includes(relation.mode));
+			this.rest_related(ChildModel, `${base_route}/:id`, restroute, ['BelongsToeRelation', 'HasOneRelation'].includes(relation.mode));
 		}
 	}
 	private rest_related<T extends RouterModel<any>>(Model:T, route:string, restroute:T, single:boolean=false) {
