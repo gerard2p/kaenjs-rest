@@ -1,0 +1,5 @@
+{
+  "commands": {
+    "vault": "@kaenjs/vault-orm/command/vault"
+  }
+}

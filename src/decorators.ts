@@ -1,7 +1,5 @@
 import { HTTPVerbs } from "@kaenjs/core";
-import { STORAGEHOOK } from "@kaenjs/router";
-export const RESTVerbs = [HTTPVerbs.get, HTTPVerbs.post, HTTPVerbs.put, HTTPVerbs.patch, HTTPVerbs.delete];
-export type DATABASEMODEL = { new(...args: any[]): {} };
+import { STORAGEHOOK, DATABASEMODEL } from "@kaenjs/router";
 export function REST(Model: DATABASEMODEL, version: string = '1.0', subdomain: string = 'api') {
 	return function REST<T extends DATABASEMODEL>(constructor: T) {
 		class model extends constructor {

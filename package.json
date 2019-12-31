@@ -19,11 +19,11 @@
   "author": "Gerardo Pérez Pérez <gerard2perez@outlook.com>",
   "license": "AGPL-3.0",
   "devDependencies": {
-    "@kaenjs/core": "file:../core",
+    "@kaenjs/core": "file:C:/Development/@kaenjs/core",
     "@types/node": "^10.0.0",
     "typescript": "^3.4.3",
-    "@kaenjs/vault-orm": "file:../vault-orm",
-    "@kaenjs/router": "file:../router",
+    "@kaenjs/vault-orm": "file:C:/Development/@kaenjs/vault-orm",
+    "@kaenjs/router": "file:C:/Development/@kaenjs/router",
     "@gerard2p/vault-orm": "file:../../@gerard2p/vault-orm"
   },
   "dependencies": {

@@ -1,12 +1,11 @@
 import { HTTPVerbs, inflector, KaenContext, Middleware } from "@kaenjs/core";
 import { StandardRequestHeaders, StandardResponseHeaders } from "@kaenjs/core/headers";
 import { parseHeader } from "@kaenjs/core/utils";
-import { Router as KNRouter, RouterOptions } from '@kaenjs/router';
+import { Router as KNRouter, RouterOptions, RESTVerbs } from '@kaenjs/router';
 import { RegisterRoute } from '@kaenjs/router/register';
 import { posix } from "path";
 import 'reflect-metadata';
 import { CONTENT_NEGOTIATION } from "./content_negotiation";
-import { RESTVerbs } from './decorators';
 import { RouterModel } from "./model";
 import { REST_DELETE, REST_GET, REST_POST, REST_PUT } from './verbs';
 import { getMetadata, setMetadata } from '@kaenjs/router/metadata';
@@ -15,6 +14,7 @@ import { definitionFor, getSchemaFor } from "@gerard2p/vault-orm";
 
 export { Routes, Subdomains } from '@kaenjs/router';
 export * from './decorators';
+export * from '@kaenjs/router/decorator';
 export { REST_GET, REST_POST, REST_PUT, REST_DELETE, RouterModel as Restify, RouterModel };
 
 export class Router extends KNRouter{
